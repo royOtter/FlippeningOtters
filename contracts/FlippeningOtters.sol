@@ -19,16 +19,27 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
-contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterface {
-    using Strings for uint256;
+/**
+ * Steps for initializing the contract
+ * 1. Deploy the contract with right constructor params
+ * 2. Call getRandomNumber
+ * 3. Add presale address presalerList
+ * 4. Gift to give away winners
+ * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus, setSignerAddress
+ * 6. Set lockMetadata
+ * 7. Let it mint
+ */ 
+contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
     using ECDSA for bytes32;
 
-    uint256 public constant OTTER_GIFT = 88;
-    uint256 public constant OTTER_PRIVATE = 800;
-    uint256 public constant OTTER_PUBLIC = 8000;
+    uint256 public constant OTTER_GIFT = 99;
+    uint256 public constant OTTER_PRIVATE = 900;
+    uint256 public constant OTTER_PUBLIC = 9000;
     uint256 public constant OTTER_MAX = OTTER_GIFT + OTTER_PRIVATE + OTTER_PUBLIC;
     uint256 public constant OTTER_PRICE = 0.05 ether;
     uint256 public constant OTTER_PER_MINT = 5;
@@ -36,10 +47,10 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     mapping(address => bool) public presalerList;
     mapping(address => uint256) public presalerListPurchases;
     mapping(string => bool) private _usedNonces;
+    mapping(uint256 => uint256) private _tokenIdToImageId;
     
     string private _contractURI;
     string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
-    address private _artistAddress;
     address private _signerAddress;
 	
     string public proof;
@@ -56,10 +67,32 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     AggregatorV3Interface internal btcMarketCapFeed;
     bool public done;
     
-    constructor() ERC721("Flippening Otters", "FOT") { 
-      // https://docs.chain.link/docs/ethereum-addresses
-      ethMarketCapFeed = AggregatorV3Interface(0xAA2FE1324b84981832AafCf7Dc6E6Fe6cF124283);
-      btcMarketCapFeed = AggregatorV3Interface(0x47E1e89570689c13E723819bf633548d611D630C);
+    
+    bytes32 internal randomKeyHash;
+    uint256 internal randomLinkFee;
+    uint256 public randomResult;
+    
+    // ETH Mainnet params.
+    //
+    // https://docs.chain.link/docs/ethereum-addresses
+    // ethFeed: 0xAA2FE1324b84981832AafCf7Dc6E6Fe6cF124283
+    // btcFeed: 0x47E1e89570689c13E723819bf633548d611D630C
+    //
+    // https://docs.chain.link/docs/vrf-contracts/
+    // vrfLinkToken: 0x514910771AF9Ca656af840dff83E8264EcF986CA
+    // vrfCoordinator: 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952
+    // keyHash: 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445
+    // Fee: 2 LNK
+    constructor(address ethFeed, address btcFeed, address vrfLinkToken, address vrfCoordinator, bytes32 keyHash, uint256 linkFee) 
+        ERC721("Flippening Otters", "FOT") 
+        VRFConsumerBase(
+            vrfCoordinator, // VRF Coordinator
+            vrfLinkToken  // LINK Token
+        ) { 
+      ethMarketCapFeed = AggregatorV3Interface(ethFeed);
+      btcMarketCapFeed = AggregatorV3Interface(btcFeed);
+      randomKeyHash = keyHash;
+      randomLinkFee = linkFee * 10 ** 18; // 0.1 LINK (Varies by network)
     }
     
     modifier notLocked {
@@ -102,6 +135,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     function buy(bytes32 hash, bytes memory signature, string memory nonce, uint256 tokenQuantity) external payable {
         require(saleLive, "SALE_CLOSED");
         require(!presaleLive, "ONLY_PRESALE");
+        // Only minting from the official website will be permitted.
         require(matchAddresSigner(hash, signature), "DIRECT_MINT_DISALLOWED");
         require(!_usedNonces[nonce], "HASH_USED");
         require(hashTransaction(msg.sender, tokenQuantity, nonce) == hash, "HASH_FAIL");
@@ -112,7 +146,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         
         for(uint256 i = 0; i < tokenQuantity; i++) {
             publicAmountMinted++;
-            _safeMint(msg.sender, totalSupply() + 1);
+            shuffleMint(msg.sender, totalSupply() + 1);
         }
         
         _usedNonces[nonce] = true;
@@ -129,7 +163,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMinted++;
             presalerListPurchases[msg.sender]++;
-            _safeMint(msg.sender, totalSupply() + 1);
+            shuffleMint(msg.sender, totalSupply() + 1);
         }
     }
     
@@ -139,12 +173,26 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         
         for (uint256 i = 0; i < receivers.length; i++) {
             giftedAmount++;
-            _safeMint(receivers[i], totalSupply() + 1);
+            shuffleMint(receivers[i], totalSupply() + 1);
         }
     }
     
+    /**
+     * Generates a number between 1 to num (inclusive).
+     */ 
+    function rangedRandomNum(uint256 num) internal view returns (uint256) {
+        return uint256(keccak256(abi.encode(block.timestamp, msg.sender, totalSupply(), randomResult)))%num + 1;
+    }
+    
+    function shuffleMint(address to, uint256 tokenId) internal {
+        _safeMint(to, tokenId);
+        uint256 target = rangedRandomNum(tokenId);
+        // Swap target and tokenId image mapping.
+        _tokenIdToImageId[tokenId] = target;
+        _tokenIdToImageId[target] = tokenId;
+    }
+    
     function withdraw() external onlyOwner {
-        payable(_artistAddress).transfer(address(this).balance * 2 / 5);
         payable(msg.sender).transfer(address(this).balance);
     }
     
@@ -191,18 +239,44 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "Cannot query non-existent token");
+        require(locked, "Wait for minting to complete");
+        require(_tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
-        return string(abi.encodePacked(_tokenBaseURI, tokenId.toString()));
+        return string(abi.encodePacked(_tokenBaseURI, _tokenIdToImageId[tokenId]));
     }
     
-    // TODO: change it to private function.
+    function updateLinkFee(uint256 linkFee) external onlyOwner {
+      randomLinkFee = linkFee * 10 ** 18;
+    }
+    
+    
+    function updateKeyHash(bytes32 keyHash) external onlyOwner {
+      randomKeyHash = keyHash;
+    }
+    
+    /** 
+     * Requests randomness 
+     */
+    function getRandomNumber() public onlyOwner returns (bytes32 requestId) {
+        require(LINK.balanceOf(address(this)) >= randomLinkFee, "Not enough LINK - fill contract with faucet");
+        return requestRandomness(randomKeyHash, randomLinkFee);
+    }
+
+    /**
+     * Callback function used by VRF Coordinator
+     */
+    function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
+        randomResult = randomness;
+    }
+    
+    // TODO: change it to internal function after testing.
     function isFlipped() public view returns (bool) {
         (, int256 btcMarketCap,,,) = btcMarketCapFeed.latestRoundData();
         (, int256 ethMarketCap,,,) = ethMarketCapFeed.latestRoundData();
         return btcMarketCap <= ethMarketCap ;
     }
     
-    function checkUpkeep(bytes calldata /* checkData */) external override returns (bool upkeepNeeded, bytes memory /* performData */) {
+    function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
         upkeepNeeded = !done && isFlipped();
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
