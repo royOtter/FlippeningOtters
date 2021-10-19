@@ -68,7 +68,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     AggregatorV3Interface internal btcMarketCapFeed;
     bool public flipped;
     
-    
+    bool internal enableKeeper;
     bytes32 internal randomKeyHash;
     uint256 internal randomLinkFee;
     uint256 public randomResult;
@@ -276,9 +276,13 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         (, int256 ethMarketCap,,,) = ethMarketCapFeed.latestRoundData();
         return btcMarketCap <= ethMarketCap ;
     }
+
+	function setEnableKeeper() public onlyOwner {
+		enableKeeper = true;
+	}
     
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
-        upkeepNeeded = !flipped && isFlipped();
+        upkeepNeeded = enableKeeper && !flipped && isFlipped();
         // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
     }
 
