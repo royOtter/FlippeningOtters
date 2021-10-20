@@ -222,10 +222,13 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "Cannot query non-existent token");
-        require(totalSupply() >= OTTER_MAX, "Wait for minting to complete");
+        //require(totalSupply() >= OTTER_MAX, "Wait for minting to complete");
         require(tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
-        uint256 imageId = tokenIdToImageId[tokenId];
+        uint256 imageId = 0; // "Wait for minting to complete"
+        if(totalSupply() >= OTTER_MAX) {
+            imageId = tokenIdToImageId[tokenId];
+        }
         if(tokenId != FLIPPENING_OTTER_TOKEN_ID) {
             imageId = (imageId + finalShifter)%OTTER_MAX + 1;
         }
