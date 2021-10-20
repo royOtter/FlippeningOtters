@@ -43,6 +43,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     uint256 public constant OTTER_PRICE = 0.05 ether;
     uint256 public constant OTTER_PER_MINT = 5;
     uint256 public constant FLIPPENING_OTTER_TOKEN_ID = OTTER_MAX + 1;
+    uint256 public constant PRESALE_PURCHASE_LIMIT = 2;
     
     mapping(address => bool) public presalerList;
     mapping(address => uint256) public presalerListPurchases;
@@ -55,7 +56,6 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     uint256 public giftedAmount;
     uint256 public publicAmountMinted;
     uint256 public privateAmountMinted;
-    uint256 public presalePurchaseLimit = 2;
     uint256 public finalShifter;
     bool public presaleLive;
     bool public saleLive;
@@ -140,7 +140,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         require(presalerList[msg.sender], "NOT_QUALIFIED");
         require(totalSupply() + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE, "EXCEED_PRIVATE");
-        require(presalerListPurchases[msg.sender] + tokenQuantity <= presalePurchaseLimit, "EXCEED_ALLOC");
+        require(presalerListPurchases[msg.sender] + tokenQuantity <= PRESALE_PURCHASE_LIMIT, "EXCEED_ALLOC");
         require(OTTER_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
