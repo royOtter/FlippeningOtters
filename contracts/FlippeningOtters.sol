@@ -18,7 +18,6 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -30,13 +29,11 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 2. Call getRandomNumber
  * 3. Add presale address presalerList
  * 4. Gift to give away winners
- * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus, setSignerAddress
+ * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus
  * 6. Set lockMetadata
  * 7. Let it mint
  */ 
 contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
-    using ECDSA for bytes32;
-
     uint256 public constant OTTER_GIFT = 99;
     uint256 public constant OTTER_PRIVATE = 900;
     uint256 public constant OTTER_PUBLIC = 9000;
@@ -47,12 +44,10 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     mapping(address => bool) public presalerList;
     mapping(address => uint256) public presalerListPurchases;
-    mapping(string => bool) private _usedNonces;
     mapping(uint256 => uint256) private _tokenIdToImageId;
     
     string private _contractURI;
     string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
-    address private _signerAddress;
 	
     string public proof;
     uint256 public giftedAmount;
@@ -119,28 +114,11 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
             presalerList[entry] = false;
         }
     }
-    
-    function hashTransaction(address sender, uint256 qty, string memory nonce) private pure returns(bytes32) {
-          bytes32 hash = keccak256(abi.encodePacked(
-            "\x19Ethereum Signed Message:\n32",
-            keccak256(abi.encodePacked(sender, qty, nonce)))
-          );
-          
-          return hash;
-    }
-    
-    function matchAddresSigner(bytes32 hash, bytes memory signature) private view returns(bool) {
-        return _signerAddress == hash.recover(signature);
-    }
-    
-    function buy(bytes32 hash, bytes memory signature, string memory nonce, uint256 tokenQuantity) external payable {
+
+    function buy(uint256 tokenQuantity) external payable {
         require(saleLive, "SALE_CLOSED");
         require(!presaleLive, "ONLY_PRESALE");
-        // Only minting from the official website will be permitted.
-        require(matchAddresSigner(hash, signature), "DIRECT_MINT_DISALLOWED");
-        require(!_usedNonces[nonce], "HASH_USED");
-        require(hashTransaction(msg.sender, tokenQuantity, nonce) == hash, "HASH_FAIL");
-        require(totalSupply() < OTTER_MAX, "OUT_OF_STOCK");
+        require(totalSupply() + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(publicAmountMinted + tokenQuantity <= OTTER_PUBLIC, "EXCEED_PUBLIC");
         require(tokenQuantity <= OTTER_PER_MINT, "EXCEED_OTTER_PER_MINT");
         require(OTTER_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
@@ -149,14 +127,12 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
             publicAmountMinted++;
             shuffleMint(msg.sender, totalSupply() + 1);
         }
-        
-        _usedNonces[nonce] = true;
     }
     
     function presaleBuy(uint256 tokenQuantity) external payable {
         require(!saleLive && presaleLive, "PRESALE_CLOSED");
         require(presalerList[msg.sender], "NOT_QUALIFIED");
-        require(totalSupply() < OTTER_MAX, "OUT_OF_STOCK");
+        require(totalSupply() + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE, "EXCEED_PRIVATE");
         require(presalerListPurchases[msg.sender] + tokenQuantity <= presalePurchaseLimit, "EXCEED_ALLOC");
         require(OTTER_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
@@ -218,10 +194,6 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         saleLive = !saleLive;
     }
     
-    function setSignerAddress(address addr) external onlyOwner {
-        _signerAddress = addr;
-    }
-    
     function setProvenanceHash(string calldata hash) external onlyOwner notLocked {
         proof = hash;
     }
@@ -240,7 +212,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "Cannot query non-existent token");
-        require(locked, "Wait for minting to complete");
+        require(totalSupply() >= OTTER_MAX, "Wait for minting to complete");
         require(_tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
         return string(abi.encodePacked(_tokenBaseURI, _tokenIdToImageId[tokenId]));
@@ -283,7 +255,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     function checkUpkeep(bytes calldata /* checkData */) external view override returns (bool upkeepNeeded, bytes memory /* performData */) {
         upkeepNeeded = enableKeeper && !flipped && isFlipped();
-        // We don't use the checkData in this example. The checkData is defined when the Upkeep was registered.
+        // We don't use the checkData in this. The checkData is defined when the Upkeep was registered.
     }
 
     function performUpkeep(bytes calldata /* performData */) external override {
@@ -294,6 +266,5 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         // Assign Flippening Otter to owner of one of the existing otters.
         _safeMint(ownerOf(rangedRandomNum(totalSupply())), FLIPPENING_OTTER_TOKEN_ID);
         _tokenIdToImageId[FLIPPENING_OTTER_TOKEN_ID] = FLIPPENING_OTTER_TOKEN_ID;
-        // We don't use the performData in this example. The performData is generated by the Keeper's call to your checkUpkeep function
     }  
 }
