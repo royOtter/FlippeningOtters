@@ -18,6 +18,7 @@ pragma solidity ^0.8.7;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
@@ -28,6 +29,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 1. Deploy the contract with right constructor params
  * 2. Call getRandomNumber
  * 3. Add presale address presalerList
+ * 4. Enable presale
  * 4. Gift to give away winners
  * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus
  * 6. Set lockMetadata
@@ -44,7 +46,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     mapping(address => bool) public presalerList;
     mapping(address => uint256) public presalerListPurchases;
-    mapping(uint256 => uint256) private _tokenIdToImageId;
+    mapping(uint256 => uint256) public tokenIdToImageId;
     
     string private _contractURI;
     string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
@@ -78,7 +80,10 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     // vrfLinkToken: 0x514910771AF9Ca656af840dff83E8264EcF986CA
     // vrfCoordinator: 0xf0d54349aDdcf704F77AE15b96510dEA15cb7952
     // keyHash: 0xAA77729D3466CA35AE8D28B3BBAC7CC36A5031EFDC430821C02BC31A238AF445
-    // Fee: 2 LNK
+    // Fee: 2000000000000000000 
+    //
+    // Kovan: 0x9326BFA02ADD2366b30bacB125260Af641031331,0x6135b13325bfC4B00278B4abC5e20bbce2D6580e,0xa36085F69e2889c224210F603D836748e7dC0088,0xdD3782915140c8f3b190B5D67eAc6dc5760C46E9,0x6c3699283bda56ad74f6b855546325b68d482e983852a7a82979cc4807b641f4,100000000000000000
+    // Rinkeby: 0x8A753747A1Fa494EC906cE90E9f37563A8AF630e,0x2431452A0010a43878bF198e170F6319Af6d27F4,0x01BE23585060835E02B77ef475b0Cc51aA1e0709,0xb3dCcb4Cf7a26f6cf6B120Cf5A73875B7BBc655B,0x2ed0feb3e7fd2022120aa84fab1945545a9f2ffc9076fd6156fa96eaff4c1311,100000000000000000
     constructor(address ethFeed, address btcFeed, address vrfLinkToken, address vrfCoordinator, bytes32 keyHash, uint256 linkFee) 
         ERC721("Flippening Otters", "FOT") 
         VRFConsumerBase(
@@ -88,7 +93,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
       ethMarketCapFeed = AggregatorV3Interface(ethFeed);
       btcMarketCapFeed = AggregatorV3Interface(btcFeed);
       randomKeyHash = keyHash;
-      randomLinkFee = linkFee * 10 ** 18; // 0.1 LINK (Varies by network)
+      randomLinkFee = linkFee; // LINK (Varies by network)
     }
     
     modifier notLocked {
@@ -165,8 +170,8 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         _safeMint(to, tokenId);
         uint256 target = rangedRandomNum(tokenId);
         // Swap target and tokenId image mapping.
-        _tokenIdToImageId[tokenId] = target;
-        _tokenIdToImageId[target] = tokenId;
+        tokenIdToImageId[tokenId] = target;
+        tokenIdToImageId[target] = tokenId;
     }
     
     function withdraw() external onlyOwner {
@@ -213,13 +218,13 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "Cannot query non-existent token");
         require(totalSupply() >= OTTER_MAX, "Wait for minting to complete");
-        require(_tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
+        require(tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
-        return string(abi.encodePacked(_tokenBaseURI, _tokenIdToImageId[tokenId]));
+        return string(abi.encodePacked(_tokenBaseURI, Strings.toString(tokenIdToImageId[tokenId])));
     }
     
     function updateLinkFee(uint256 linkFee) external onlyOwner {
-      randomLinkFee = linkFee * 10 ** 18;
+      randomLinkFee = linkFee;
     }
     
     
@@ -265,6 +270,6 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         flipped = true;
         // Assign Flippening Otter to owner of one of the existing otters.
         _safeMint(ownerOf(rangedRandomNum(totalSupply())), FLIPPENING_OTTER_TOKEN_ID);
-        _tokenIdToImageId[FLIPPENING_OTTER_TOKEN_ID] = FLIPPENING_OTTER_TOKEN_ID;
+        tokenIdToImageId[FLIPPENING_OTTER_TOKEN_ID] = FLIPPENING_OTTER_TOKEN_ID;
     }  
 }
