@@ -56,6 +56,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     uint256 public publicAmountMinted;
     uint256 public privateAmountMinted;
     uint256 public presalePurchaseLimit = 2;
+    uint256 public finalShifter;
     bool public presaleLive;
     bool public saleLive;
     bool public locked;
@@ -167,11 +168,15 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     }
     
     function shuffleMint(address to, uint256 tokenId) internal {
-        _safeMint(to, tokenId);
         uint256 target = rangedRandomNum(tokenId);
+        _safeMint(to, tokenId);
         // Swap target and tokenId image mapping.
         tokenIdToImageId[tokenId] = target;
         tokenIdToImageId[target] = tokenId;
+        if(totalSupply() == OTTER_MAX) {
+            // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
+            finalShifter = rangedRandomNum(OTTER_MAX);
+        }
     }
     
     function withdraw() external onlyOwner {
@@ -220,7 +225,11 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         require(totalSupply() >= OTTER_MAX, "Wait for minting to complete");
         require(tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
-        return string(abi.encodePacked(_tokenBaseURI, Strings.toString(tokenIdToImageId[tokenId])));
+        uint256 imageId = tokenIdToImageId[tokenId];
+        if(tokenId != FLIPPENING_OTTER_TOKEN_ID) {
+            imageId = (imageId + finalShifter)%OTTER_MAX + 1;
+        }
+        return string(abi.encodePacked(_tokenBaseURI, Strings.toString(imageId)));
     }
     
     function updateLinkFee(uint256 linkFee) external onlyOwner {
