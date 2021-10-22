@@ -52,7 +52,6 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     string private _contractURI;
     string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
 	
-    string public proof;
     uint256 public giftedAmount;
     uint256 public publicAmountMinted;
     uint256 public privateAmountMinted;
@@ -183,6 +182,13 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         payable(msg.sender).transfer(address(this).balance);
     }
     
+    function burn(uint256[] calldata tokenIds) external onlyOwner() {
+          for (uint256 i = 0; i < tokenIds.length; i++) {
+              _burn(tokenIds[i]);
+              delete tokenIdToImageId[tokenIds[i]];
+        }
+    }
+
     function isPresaler(address addr) external view returns (bool) {
         return presalerList[addr];
     }
@@ -202,10 +208,6 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     
     function toggleSaleStatus() external onlyOwner {
         saleLive = !saleLive;
-    }
-    
-    function setProvenanceHash(string calldata hash) external onlyOwner notLocked {
-        proof = hash;
     }
     
     function setContractURI(string calldata URI) external onlyOwner notLocked {
