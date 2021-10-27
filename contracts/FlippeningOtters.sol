@@ -163,7 +163,11 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
      * Generates a number between 1 to num (inclusive).
      */ 
     function rangedRandomNum(uint256 num) internal view returns (uint256) {
-        return uint256(keccak256(abi.encode(block.timestamp, msg.sender, totalSupply(), randomResult)))%num + 1;
+        return rangedRandomNumWithSeed(num, block.timestamp);
+    }
+
+    function rangedRandomNumWithSeed(uint256 num, uint256 counter) internal view returns (uint256) {
+        return uint256(keccak256(abi.encode(counter, msg.sender, totalSupply(), randomResult)))%num + 1;
     }
     
     function shuffleMint(address to, uint256 tokenId) internal {
@@ -282,8 +286,15 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         require(isFlipped(), "Flippening event must have already happened");
         // Mint the Flippening Otter
         flipped = true;
+        uint256 counter = block.timestamp;
+        uint256 tokenId = rangedRandomNumWithSeed(totalSupply(), counter);
+        // Find a tokenId with valid owner. This is required to handle burned tokens.
+        while(ownerOf(tokenId) == address(0)) {
+            counter++;
+            tokenId = rangedRandomNumWithSeed(totalSupply(), counter);
+        }
         // Assign Flippening Otter to owner of one of the existing otters.
-        _safeMint(ownerOf(rangedRandomNum(totalSupply())), FLIPPENING_OTTER_TOKEN_ID);
+        _safeMint(ownerOf(tokenId), FLIPPENING_OTTER_TOKEN_ID);
         tokenIdToImageId[FLIPPENING_OTTER_TOKEN_ID] = FLIPPENING_OTTER_TOKEN_ID;
     }  
 }
