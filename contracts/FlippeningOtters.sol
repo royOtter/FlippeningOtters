@@ -40,7 +40,8 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
     uint256 public constant OTTER_PRIVATE = 900;
     uint256 public constant OTTER_PUBLIC = 9000;
     uint256 public constant OTTER_MAX = OTTER_GIFT + OTTER_PRIVATE + OTTER_PUBLIC;
-    uint256 public constant OTTER_PRICE = 0.05 ether;
+    uint256 public constant OTTER_MINT_PRICE = 0.05 ether;
+    uint256 public constant OTTER_PRESALE_PRICE = 0.04 ether;
     uint256 public constant OTTER_PER_MINT = 5;
     uint256 public constant FLIPPENING_OTTER_TOKEN_ID = OTTER_MAX + 1;
     uint256 public constant PRESALE_PURCHASE_LIMIT = 2;
@@ -126,7 +127,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         require(totalSupply() + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(publicAmountMinted + tokenQuantity <= OTTER_PUBLIC, "EXCEED_PUBLIC");
         require(tokenQuantity <= OTTER_PER_MINT, "EXCEED_OTTER_PER_MINT");
-        require(OTTER_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
+        require(OTTER_MINT_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for(uint256 i = 0; i < tokenQuantity; i++) {
             publicAmountMinted++;
@@ -140,7 +141,7 @@ contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterfac
         require(totalSupply() + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE, "EXCEED_PRIVATE");
         require(presalerListPurchases[msg.sender] + tokenQuantity <= PRESALE_PURCHASE_LIMIT, "EXCEED_ALLOC");
-        require(OTTER_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
+        require(OTTER_PRESALE_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMinted++;
