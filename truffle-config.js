@@ -1,3 +1,5 @@
+const HDWalletProvider = require("@truffle/hdwallet-provider");
+
 module.exports = {
   // Uncommenting the defaults below 
   // provides for an easier quick-start with Ganache.
@@ -5,7 +7,7 @@ module.exports = {
   // see <http://truffleframework.com/docs/advanced/configuration>
   // for more details on how to specify configuration options!
   //
-  plugins: ["truffle-contract-size"],
+  plugins: ["truffle-contract-size", "truffle-plugin-verify"],
   networks: {
    development: {
      host: "127.0.0.1",
@@ -16,6 +18,10 @@ module.exports = {
      host: "127.0.0.1",
      port: 7545,
      network_id: "*"
+   },
+   rinkeby: {
+     provider: new HDWalletProvider(process.env.MNEMONIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_KEY),
+     network_id: 4
    }
   },
   //
@@ -34,12 +40,15 @@ module.exports = {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 500
+            runs: 200
           },
         },
        version: "0.8.7",    // Fetch exact version from solc-bin (default: truffle's version)
     }
   },
+  api_keys: {
+    etherscan: process.env.ETHERSCAN_KEY
+  }
   // db: {
     // enabled: false,
     // host: "127.0.0.1",

@@ -16,7 +16,6 @@ pragma solidity ^0.8.7;
 */
                                           
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
@@ -35,7 +34,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 6. Set lockMetadata
  * 7. Let it mint
  */ 
-contract FlippeningOtters is ERC721Enumerable, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
+contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
     uint256 public constant OTTER_GIFT_MAX = 99;
     uint256 public constant OTTER_PRIVATE_MAX = 900;
     uint256 public constant OTTER_MAX = 9999;

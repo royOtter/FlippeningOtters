@@ -2,7 +2,12 @@
   "dependencies": {
     "@chainlink/contracts": "^0.2.2",
     "@openzeppelin/contracts": "^4.3.2",
+    "@truffle/hdwallet-provider": "^1.5.1",
     "dotenv": "^10.0.0",
-    "truffle-contract-size": "^2.0.1"
+    "truffle-contract-size": "^2.0.1",
+    "truffle-hdwallet-provider": "^1.0.17"
+  },
+  "devDependencies": {
+    "truffle-plugin-verify": "^0.5.16"
   }
 }
