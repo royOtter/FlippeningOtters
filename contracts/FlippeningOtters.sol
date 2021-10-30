@@ -162,6 +162,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function updateCompanion(uint256 tokenId, string calldata companionType) external payable {
         require(_exists(tokenId), "Cannot query non-existent token");
+        require(tokenId != FLIPPENING_OTTER_TOKEN_ID, "Flippening Otter cannot be modified");
         require(totalAmountMinted >= OTTER_MAX/2, "Wait for 50% minting to complete");
         require(ownerOf(tokenId) == msg.sender, "Only token owner can change companions");
         bool isDelete = compare(companionType, "");
@@ -177,6 +178,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
 
     function updateWing(uint256 tokenId, string calldata wingType) external payable {
         require(_exists(tokenId), "Cannot query non-existent token");
+        require(tokenId != FLIPPENING_OTTER_TOKEN_ID, "Flippening Otter cannot be modified");
         require(totalAmountMinted >= 3*OTTER_MAX/4, "Wait for 75% minting to complete");
         require(ownerOf(tokenId) == msg.sender, "Only token owner can change wings");
         bool isDelete = compare(wingType, "");
