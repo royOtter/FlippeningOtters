@@ -50,8 +50,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         string wing;
         string companion;
     }
-    mapping(address => uint256) public giveAwayList;
-    mapping(address => uint256) public presalerListPurchases;
+    mapping(address => uint256) public giveAwayListAlloc;
+    mapping(address => uint256) public presalerListAlloc;
     mapping(uint256 => uint256) public tokenIdToImageId;
     mapping(uint256 => OtterAddOns) public tokenIdToAddons;
     
@@ -113,7 +113,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            giveAwayList[entry]++;
+            giveAwayListAlloc[entry]++;
         }   
     }
 
@@ -121,7 +121,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            giveAwayList[entry]--;
+            giveAwayListAlloc[entry]--;
         }
     }
 
@@ -129,9 +129,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            require(presalerListPurchases[entry] > 0, "DUPLICATE_ENTRY");
-
-            presalerListPurchases[entry] = PRESALE_PURCHASE_LIMIT;
+            require(presalerListAlloc[entry] > 0, "DUPLICATE_ENTRY");
+            presalerListAlloc[entry] = PRESALE_PURCHASE_LIMIT;
         }   
     }
 
@@ -139,7 +138,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            presalerListPurchases[entry] = 0;
+            presalerListAlloc[entry] = 0;
         }
     }
 
@@ -157,12 +156,12 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         require(presaleLive, "PRESALE_CLOSED");
         require(totalAmountMinted + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE_MAX, "EXCEED_PRIVATE");
-        require(presalerListPurchases[msg.sender] > 0, "EXCEED_ALLOC");
+        require(presalerListAlloc[msg.sender] > 0, "EXCEED_ALLOC");
         require(OTTER_PRESALE_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMinted++;
-            presalerListPurchases[msg.sender]--;
+            presalerListAlloc[msg.sender]--;
             shuffleMint(msg.sender, totalAmountMinted + 1);
         }
     }
@@ -172,10 +171,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         require(giveAwayLive, "GIVE_AWAY_CLOSED");
         require(totalAmountMinted + 1 <= OTTER_MAX, "OUT_OF_STOCK");
         require(giveAwayAmountMinted + 1 <= OTTER_GIVE_AWAY_MAX, "EXCEED_GIVE_AWAY");
-        require(giveAwayList[msg.sender] > 0, "NOT_QUALIFIED");
+        require(giveAwayListAlloc[msg.sender] > 0, "NOT_QUALIFIED");
 
         giveAwayAmountMinted++;
-        giveAwayList[msg.sender]--;
+        giveAwayListAlloc[msg.sender]--;
         shuffleMint(msg.sender, totalAmountMinted + 1);
     }
 
