@@ -29,13 +29,14 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 2. Call getRandomNumber
  * 3. Add presale address presalerList
  * 4. Enable presale
- * 4. Gift to give away winners
+ * 4. Enable give away
  * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus
  * 6. Set lockMetadata
  * 7. Let it mint
  */ 
 contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
-    uint256 public constant OTTER_GIFT_MAX = 99;
+    uint256 public constant OTTER_AIR_DROP_MAX = 99;
+    uint256 public constant OTTER_GIVE_AWAY_MAX = 300;
     uint256 public constant OTTER_PRIVATE_MAX = 900;
     uint256 public constant OTTER_MAX = 9999;
     uint256 public constant OTTER_WING_PRICE = 0.04 ether;
@@ -49,7 +50,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         string wing;
         string companion;
     }
-    mapping(address => bool) public presalerList;
+    mapping(address => uint256) public giveAwayList;
     mapping(address => uint256) public presalerListPurchases;
     mapping(uint256 => uint256) public tokenIdToImageId;
     mapping(uint256 => OtterAddOns) public tokenIdToAddons;
@@ -57,11 +58,13 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     string private _contractURI;
     string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
 	
-    uint256 public giftedAmount;
+    uint256 public airDropAmount;
+    uint256 public giveAwayAmountMinted;
     uint256 public privateAmountMinted;
     uint256 public totalAmountMinted;
     uint256 public finalShifter;
     bool public presaleLive;
+    bool public giveAwayLive;
     bool public saleLive;
     bool public locked;
     
@@ -105,14 +108,30 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         require(!locked, "Contract metadata methods are locked");
         _;
     }
-    
+
+    function increaseGiveAwayBudget(address[] calldata entries) external onlyOwner {
+        for(uint256 i = 0; i < entries.length; i++) {
+            address entry = entries[i];
+            require(entry != address(0), "NULL_ADDRESS");
+            giveAwayList[entry]++;
+        }   
+    }
+
+    function decreaseGiveAwayBudget(address[] calldata entries) external onlyOwner {
+        for(uint256 i = 0; i < entries.length; i++) {
+            address entry = entries[i];
+            require(entry != address(0), "NULL_ADDRESS");
+            giveAwayList[entry]--;
+        }
+    }
+
     function addToPresaleList(address[] calldata entries) external onlyOwner {
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            require(!presalerList[entry], "DUPLICATE_ENTRY");
+            require(presalerListPurchases[entry] > 0, "DUPLICATE_ENTRY");
 
-            presalerList[entry] = true;
+            presalerListPurchases[entry] = PRESALE_PURCHASE_LIMIT;
         }   
     }
 
@@ -120,8 +139,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            
-            presalerList[entry] = false;
+            presalerListPurchases[entry] = 0;
         }
     }
 
@@ -137,25 +155,36 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function presaleBuy(uint256 tokenQuantity) external payable {
         require(presaleLive, "PRESALE_CLOSED");
-        require(presalerList[msg.sender], "NOT_QUALIFIED");
         require(totalAmountMinted + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE_MAX, "EXCEED_PRIVATE");
-        require(presalerListPurchases[msg.sender] + tokenQuantity <= PRESALE_PURCHASE_LIMIT, "EXCEED_ALLOC");
+        require(presalerListPurchases[msg.sender] > 0, "EXCEED_ALLOC");
         require(OTTER_PRESALE_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMinted++;
-            presalerListPurchases[msg.sender]++;
+            presalerListPurchases[msg.sender]--;
             shuffleMint(msg.sender, totalAmountMinted + 1);
         }
     }
     
-    function gift(address[] calldata receivers) external onlyOwner {
+    // Free give away.    
+    function giveAwayBuy() external payable {
+        require(giveAwayLive, "GIVE_AWAY_CLOSED");
+        require(totalAmountMinted + 1 <= OTTER_MAX, "OUT_OF_STOCK");
+        require(giveAwayAmountMinted + 1 <= OTTER_GIVE_AWAY_MAX, "EXCEED_GIVE_AWAY");
+        require(giveAwayList[msg.sender] > 0, "NOT_QUALIFIED");
+
+        giveAwayAmountMinted++;
+        giveAwayList[msg.sender]--;
+        shuffleMint(msg.sender, totalAmountMinted + 1);
+    }
+
+    function airDrop(address[] calldata receivers) external onlyOwner {
         require(totalAmountMinted + receivers.length <= OTTER_MAX, "MAX_MINT");
-        require(giftedAmount + receivers.length <= OTTER_GIFT_MAX, "GIFTS_EMPTY");
+        require(airDropAmount + receivers.length <= OTTER_AIR_DROP_MAX, "EXCEED_AIR_DROP");
         
         for (uint256 i = 0; i < receivers.length; i++) {
-            giftedAmount++;
+            airDropAmount++;
             shuffleMint(receivers[i], totalAmountMinted + 1);
         }
     }
@@ -224,14 +253,6 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
               delete tokenIdToImageId[tokenIds[i]];
         }
     }
-
-    function isPresaler(address addr) external view returns (bool) {
-        return presalerList[addr];
-    }
-    
-    function presalePurchasedCount(address addr) external view returns (uint256) {
-        return presalerListPurchases[addr];
-    }
     
     // Owner functions for enabling presale, sale, revealing and setting the provenance hash
     function lockMetadata() external onlyOwner {
@@ -240,6 +261,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function togglePresaleStatus() external onlyOwner {
         presaleLive = !presaleLive;
+    }
+
+    function toggleGiveAwayStatus() external onlyOwner {
+        giveAwayLive = !giveAwayLive;
     }
     
     function toggleSaleStatus() external onlyOwner {
