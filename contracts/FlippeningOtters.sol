@@ -37,7 +37,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
     uint256 public constant OTTER_GIFT_MAX = 99;
     uint256 public constant OTTER_PRIVATE_MAX = 900;
-    uint256 public constant OTTER_MAX = 9998;
+    uint256 public constant OTTER_MAX = 9999;
     uint256 public constant OTTER_WING_PRICE = 0.04 ether;
     uint256 public constant OTTER_COMPANION_PRICE = 0.03 ether;
     uint256 public constant OTTER_MINT_PRICE = 0.05 ether;
