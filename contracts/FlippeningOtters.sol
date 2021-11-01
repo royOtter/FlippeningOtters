@@ -171,7 +171,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     }
     
     // Free give away.    
-    function giveAwayBuy() external payable {
+    function giveAwayBuy() external {
         require(giveAwayLive, "GIVE_AWAY_CLOSED");
         require(totalAmountMinted + 1 <= OTTER_MAX, "OUT_OF_STOCK");
         require(giveAwayAmountMinted + 1 <= OTTER_GIVE_AWAY_MAX, "EXCEED_GIVE_AWAY");
@@ -301,11 +301,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function tokenURI(uint256 tokenId) public view override(ERC721) returns (string memory) {
         require(_exists(tokenId), "Cannot query non-existent token");
-        //require(totalAmountMinted >= OTTER_MAX, "Wait for minting to complete");
         require(tokenIdToImageId[tokenId] > 0, "Cannot query non-existent imageId");
         
         uint256 imageId = 0; // "Wait for minting to complete"
-        if(totalAmountMinted >= OTTER_MAX) {
+        if(mintingFinalized) {
             imageId = tokenIdToImageId[tokenId];
             if(tokenId != FLIPPENING_OTTER_TOKEN_ID) {
                 imageId = (imageId + finalShifter)%OTTER_MAX + 1;
