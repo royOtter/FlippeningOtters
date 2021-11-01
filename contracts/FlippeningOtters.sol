@@ -38,23 +38,22 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 12. Enable wingUpdates at 75% minting
  */ 
 contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
-    uint256 public constant OTTER_AIR_DROP_MAX = 99;
-    uint256 public constant OTTER_GIVE_AWAY_MAX = 300;
-    uint256 public constant OTTER_PRIVATE_MAX = 900;
+    uint256 public constant OTTER_AIR_DROP_MAX = 200;
+    uint256 public constant OTTER_GIVE_AWAY_MAX = 200;
+    uint256 public constant OTTER_PRIVATE_MAX = 300;
     uint256 public constant OTTER_MAX = 9999;
-    uint256 public constant OTTER_WING_PRICE = 0.04 ether;
-    uint256 public constant OTTER_COMPANION_PRICE = 0.03 ether;
-    uint256 public constant OTTER_MINT_PRICE = 0.05 ether;
-    uint256 public constant OTTER_PRESALE_PRICE = 0.04 ether;
     uint256 public constant FLIPPENING_OTTER_TOKEN_ID = OTTER_MAX + 1;
-    uint256 public constant PRESALE_PURCHASE_LIMIT = 3;
+    uint256 public OTTER_WING_PRICE = 0.04 ether;
+    uint256 public OTTER_COMPANION_PRICE = 0.04 ether;
+    uint256 public OTTER_MINT_PRICE = 0.04 ether;
+    uint256 public OTTER_PRESALE_PRICE = 0.01 ether;
     
     struct OtterAddOns { 
         string wing;
         string companion;
     }
     mapping(address => uint256) public giveAwayListAlloc;
-    mapping(address => uint256) public presalerListAlloc;
+    mapping(address => bool) public presalerListAlloc;
     mapping(uint256 => uint256) public tokenIdToImageId;
     mapping(uint256 => OtterAddOns) public tokenIdToAddons;
     
@@ -135,8 +134,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            require(presalerListAlloc[entry] > 0, "DUPLICATE_ENTRY");
-            presalerListAlloc[entry] = PRESALE_PURCHASE_LIMIT;
+            require(!presalerListAlloc[entry], "DUPLICATE_ENTRY");
+            presalerListAlloc[entry] = true;
         }   
     }
 
@@ -144,7 +143,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for(uint256 i = 0; i < entries.length; i++) {
             address entry = entries[i];
             require(entry != address(0), "NULL_ADDRESS");
-            presalerListAlloc[entry] = 0;
+            presalerListAlloc[entry] = false;
         }
     }
 
@@ -162,12 +161,11 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         require(presaleLive, "PRESALE_CLOSED");
         require(totalAmountMinted + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE_MAX, "EXCEED_PRIVATE");
-        require(presalerListAlloc[msg.sender] > 0, "EXCEED_ALLOC");
+        require(presalerListAlloc[msg.sender], "NOT_ELIGIBLE");
         require(OTTER_PRESALE_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMinted++;
-            presalerListAlloc[msg.sender]--;
             shuffleMint(msg.sender, totalAmountMinted + 1);
         }
     }
@@ -390,7 +388,19 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         _contractURI = URI;
     }
     
-    function setBaseURI(string calldata URI) external onlyOwner notLocked {
-        _tokenBaseURI = URI;
+    function setOtterWingPrice(uint256 price) external onlyOwner {
+        OTTER_WING_PRICE = price;
+    }
+    
+    function setOtterCompanionPrice(uint256 price) external onlyOwner {
+        OTTER_COMPANION_PRICE = price;
+    }
+
+    function setOtterMintPrice(uint256 price) external onlyOwner {
+        OTTER_MINT_PRICE = price;
+    }
+
+    function setOtterPresalePrice(uint256 price) external onlyOwner {
+        OTTER_PRESALE_PRICE = price;
     }
 }
