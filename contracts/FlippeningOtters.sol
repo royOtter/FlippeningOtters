@@ -387,6 +387,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     function setContractURI(string calldata URI) external onlyOwner notLocked {
         _contractURI = URI;
     }
+
+    function setBaseURI(string calldata URI) external onlyOwner notLocked {
+        _tokenBaseURI = URI;
+    }
     
     function setOtterWingPrice(uint256 price) external onlyOwner {
         OTTER_WING_PRICE = price;
