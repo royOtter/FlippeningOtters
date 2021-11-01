@@ -66,6 +66,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     uint256 public privateAmountMinted;
     uint256 public totalAmountMinted;
     uint256 public finalShifter;
+    bool public mintingFinalized;
     bool public presaleLive;
     bool public giveAwayLive;
     bool public saleLive;
@@ -233,8 +234,21 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     function rangedRandomNumWithSeed(uint256 num, uint256 counter) internal view returns (uint256) {
         return uint256(keccak256(abi.encode(counter, msg.sender, totalAmountMinted, randomResult)))%num + 1;
     }
-    
+
+    // Finalize the allocation of Otters and stop minting forever.
+    function finalizeMinting() public onlyOwner {
+        if(!mintingFinalized) {
+            saleLive = false;
+            presaleLive = false;
+            giveAwayLive = false;
+            mintingFinalized = true;
+            // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
+            finalShifter = rangedRandomNum(OTTER_MAX);
+        }
+    }
+
     function shuffleMint(address to, uint256 tokenId) internal {
+        require(!mintingFinalized, "Fair minting has already completed");
         uint256 target = rangedRandomNum(tokenId);
         _safeMint(to, tokenId);
         totalAmountMinted++;
@@ -242,10 +256,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         tokenIdToImageId[tokenId] = target;
         tokenIdToImageId[target] = tokenId;
         if(totalAmountMinted == OTTER_MAX) {
-            // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
-            finalShifter = rangedRandomNum(OTTER_MAX);
+            finalizeMinting();
         }
     }
+
     
     function withdraw() external onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
