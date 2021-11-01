@@ -24,15 +24,18 @@ import "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
 
 /**
- * Steps for initializing the contract
+ * Contract Timeline:
  * 1. Deploy the contract with right constructor params
- * 2. Call getRandomNumber
- * 3. Add presale address presalerList
- * 4. Enable presale
- * 4. Enable give away
- * 5. Set BaseURI, contractURI, provenanceHash, togglePresale, toggleSaleStatus
- * 6. Set lockMetadata
- * 7. Let it mint
+ * 2. Send Link tokens to contract address
+ * 3. Call getRandomNumber
+ * 4. Set BaseURI, contractURI, provenanceHash,lockMetadata
+ * 5. Add presale address presale allocation
+ * 6. Enable presale
+ * 7. Add presale address giveaway allocation
+ * 9. Enable sale
+ * 10. Enable give away at 25% minting
+ * 11. Enable companionUpdates at 50% minting
+ * 12. Enable wingUpdates at 75% minting
  */ 
 contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
     uint256 public constant OTTER_AIR_DROP_MAX = 99;
@@ -66,6 +69,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     bool public presaleLive;
     bool public giveAwayLive;
     bool public saleLive;
+    bool public companionsAvailable;
+    bool public wingsAvailable;
     bool public locked;
     
     
@@ -190,7 +195,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function updateCompanion(uint256 tokenId, string calldata companionType) external payable {
         require(_exists(tokenId), "Cannot query non-existent token");
-        require(totalAmountMinted >= OTTER_MAX/2, "Wait for 50% minting to complete");
+        require(companionsAvailable, "Companion changes are not available");
         require(ownerOf(tokenId) == msg.sender, "Only token owner can change companions");
         bool isDelete = compare(companionType, "");
         // Deletion is free.
@@ -205,7 +210,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
 
     function updateWing(uint256 tokenId, string calldata wingType) external payable {
         require(_exists(tokenId), "Cannot query non-existent token");
-        require(totalAmountMinted >= 3*OTTER_MAX/4, "Wait for 75% minting to complete");
+        require(wingsAvailable, "Wing changes are not available");
         require(ownerOf(tokenId) == msg.sender, "Only token owner can change wings");
         bool isDelete = compare(wingType, "");
         // Deletion is free.
@@ -269,13 +274,13 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     function toggleSaleStatus() external onlyOwner {
         saleLive = !saleLive;
     }
-    
-    function setContractURI(string calldata URI) external onlyOwner notLocked {
-        _contractURI = URI;
+
+    function toggleCompanionsAvailable() external onlyOwner {
+        companionsAvailable = !companionsAvailable;
     }
-    
-    function setBaseURI(string calldata URI) external onlyOwner notLocked {
-        _tokenBaseURI = URI;
+
+    function toggleWingsAvailable() external onlyOwner {
+        wingsAvailable = !wingsAvailable;
     }
     
     function contractURI() public view returns (string memory) {
@@ -365,5 +370,13 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         // Assign Flippening Otter to owner of one of the existing otters.
         _safeMint(ownerOf(tokenId), FLIPPENING_OTTER_TOKEN_ID);
         tokenIdToImageId[FLIPPENING_OTTER_TOKEN_ID] = FLIPPENING_OTTER_TOKEN_ID;
-    }  
+    } 
+
+    function setContractURI(string calldata URI) external onlyOwner notLocked {
+        _contractURI = URI;
+    }
+    
+    function setBaseURI(string calldata URI) external onlyOwner notLocked {
+        _tokenBaseURI = URI;
+    }
 }
