@@ -65,6 +65,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     uint256 public privateAmountMinted;
     uint256 public totalAmountMinted;
     uint256 public finalShifter;
+    
+    bytes32 mintingFinalRandRequestId;
     bool public mintingFinalized;
     bool public presaleLive;
     bool public giveAwayLive;
@@ -240,8 +242,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
             presaleLive = false;
             giveAwayLive = false;
             mintingFinalized = true;
-            // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
-            finalShifter = rangedRandomNum(OTTER_MAX);
+            mintingFinalRandRequestId = getRandomNumber();
         }
     }
 
@@ -347,7 +348,12 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
      * Callback function used by VRF Coordinator
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
-        randomResult = randomness;
+        if(mintingFinalRandRequestId == requestId) {
+            // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
+            finalShifter = randomness%OTTER_MAX;        
+        } else {
+            randomResult = randomness;
+        }
     }
     
     // TODO: change it to internal function after testing.

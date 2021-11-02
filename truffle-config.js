@@ -25,6 +25,11 @@ module.exports = {
      network_id: 4
    }
   },
+  mainnet: {
+    provider: new HDWalletProvider(process.env.MNEMONIC, "https://mainnet.infura.io/v3/" + process.env.INFURA_KEY),
+    network_id: 1
+  }
+ },
   //
   // Truffle DB is currently disabled by default; to enable it, change enabled:
   // false to enabled: true. The default storage location can also be
