@@ -43,10 +43,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     uint256 public constant OTTER_PRIVATE_MAX = 300;
     uint256 public constant OTTER_MAX = 9999;
     uint256 public constant FLIPPENING_OTTER_TOKEN_ID = OTTER_MAX + 1;
-    uint256 public OTTER_WING_PRICE = 0.04 ether;
-    uint256 public OTTER_COMPANION_PRICE = 0.04 ether;
-    uint256 public OTTER_MINT_PRICE = 0.04 ether;
-    uint256 public OTTER_PRESALE_PRICE = 0.01 ether;
+    uint256 public constant OTTER_WING_PRICE = 0.04 ether;
+    uint256 public constant OTTER_COMPANION_PRICE = 0.04 ether;
+    uint256 public constant OTTER_PRESALE_PRICE = 0.01 ether;
+    uint256 public OTTER_MINT_PRICE = 0.05 ether;
     
     struct OtterAddOns { 
         string wing;
@@ -390,20 +390,8 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     function setBaseURI(string calldata URI) external onlyOwner notLocked {
         _tokenBaseURI = URI;
     }
-    
-    function setOtterWingPrice(uint256 price) external onlyOwner {
-        OTTER_WING_PRICE = price;
-    }
-    
-    function setOtterCompanionPrice(uint256 price) external onlyOwner {
-        OTTER_COMPANION_PRICE = price;
-    }
 
     function setOtterMintPrice(uint256 price) external onlyOwner {
         OTTER_MINT_PRICE = price;
-    }
-
-    function setOtterPresalePrice(uint256 price) external onlyOwner {
-        OTTER_PRESALE_PRICE = price;
     }
 }
