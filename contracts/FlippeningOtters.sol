@@ -58,7 +58,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     mapping(uint256 => OtterAddOns) public tokenIdToAddons;
     
     string private _contractURI;
-    string private _tokenBaseURI = "https://flippeningotters.io/api/metadata/";
+    string private _tokenBaseURI = "ipfs://Qmf41u6GGzoZeJWR3UccXVXvEvmxfrwczSUMvsLec6MU3j/";
 	
     uint256 public airDropAmount;
     uint256 public giveAwayAmountMinted;
