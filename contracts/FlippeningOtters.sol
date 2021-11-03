@@ -28,7 +28,7 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 1. Deploy the contract with right constructor params
  * 2. Send Link tokens to contract address
  * 3. Call getRandomNumber
- * 4. Set BaseURI, contractURI, provenanceHash,lockMetadata
+ * 4. Set BaseURI, contractURI, lockMetadata
  * 5. Add presale address presale allocation
  * 6. Enable presale
  * 7. Add presale address giveaway allocation
@@ -47,7 +47,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     uint256 public constant OTTER_COMPANION_PRICE = 0.02 ether;
     uint256 public constant OTTER_PRESALE_PRICE = 0.01 ether;
     uint256 public OTTER_MINT_PRICE = 0.05 ether;
-    address public constant gnosis_safe = 0x1b0355329B7212FA98d420D0D1bD99acB13C4689;
+    address public gnosis_safe = 0x1b0355329B7212FA98d420D0D1bD99acB13C4689;
     
     struct OtterAddOns { 
         string wing;
@@ -158,7 +158,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         
         for(uint256 i = 0; i < tokenQuantity; i++) {
             totalAmountMintedLocal++;
-            shuffleMint(msg.sender, totalAmountMintedLocal + 1);
+            shuffleMint(msg.sender, totalAmountMintedLocal);
         }
         totalAmountMinted = totalAmountMintedLocal;
     }
@@ -175,7 +175,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for (uint256 i = 0; i < tokenQuantity; i++) {
             privateAmountMintedLocal++;
             totalAmountMintedLocal++;
-            shuffleMint(msg.sender, totalAmountMintedLocal + 1);
+            shuffleMint(msg.sender, totalAmountMintedLocal);
         }
         privateAmountMinted = privateAmountMintedLocal;
         totalAmountMinted = totalAmountMintedLocal;
@@ -191,7 +191,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         giveAwayAmountMinted++;
         giveAwayListAlloc[msg.sender]--;
         totalAmountMinted++;
-        shuffleMint(msg.sender, totalAmountMinted + 1);
+        shuffleMint(msg.sender, totalAmountMinted);
     }
 
     function airDrop(address[] calldata receivers) external onlyOwner {
@@ -203,7 +203,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         for (uint256 i = 0; i < receivers.length; i++) {
             airDropAmountLocal++;
             totalAmountMintedLocal++;
-            shuffleMint(receivers[i], totalAmountMintedLocal + 1);
+            shuffleMint(receivers[i], totalAmountMintedLocal);
         }
         airDropAmount = airDropAmountLocal;
         totalAmountMinted = totalAmountMintedLocal;
@@ -275,6 +275,10 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     
     function withdraw() external onlyOwner {
         payable(gnosis_safe).transfer(address(this).balance);
+    }
+
+    function setDesstinationAddress(address addr) external onlyOwner {
+        gnosis_safe = addr;
     }
     
     function burn(uint256[] calldata tokenIds) external onlyOwner() {
