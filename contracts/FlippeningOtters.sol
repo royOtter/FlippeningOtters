@@ -38,15 +38,16 @@ import "@chainlink/contracts/src/v0.8/VRFConsumerBase.sol";
  * 12. Enable wingUpdates at 75% minting
  */ 
 contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFConsumerBase {
-    uint256 public constant OTTER_AIR_DROP_MAX = 200;
-    uint256 public constant OTTER_GIVE_AWAY_MAX = 200;
-    uint256 public constant OTTER_PRIVATE_MAX = 300;
+    uint256 public constant OTTER_AIR_DROP_MAX = 300;
+    uint256 public constant OTTER_GIVE_AWAY_MAX = 500;
+    uint256 public constant OTTER_PRESALE_MAX = 300;
     uint256 public constant OTTER_MAX = 9999;
     uint256 public constant FLIPPENING_OTTER_TOKEN_ID = OTTER_MAX + 1;
-    uint256 public constant OTTER_WING_PRICE = 0.04 ether;
-    uint256 public constant OTTER_COMPANION_PRICE = 0.04 ether;
+    uint256 public constant OTTER_WING_PRICE = 0.02 ether;
+    uint256 public constant OTTER_COMPANION_PRICE = 0.02 ether;
     uint256 public constant OTTER_PRESALE_PRICE = 0.01 ether;
     uint256 public OTTER_MINT_PRICE = 0.05 ether;
+    address public constant gnosis_safe = 0x1b0355329B7212FA98d420D0D1bD99acB13C4689;
     
     struct OtterAddOns { 
         string wing;
@@ -151,25 +152,33 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
 
     function mint(uint256 tokenQuantity) external payable {
         require(saleLive, "SALE_CLOSED");
-        require(totalAmountMinted + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
+        uint256 totalAmountMintedLocal = totalAmountMinted;
+        require(totalAmountMintedLocal + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
         require(OTTER_MINT_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for(uint256 i = 0; i < tokenQuantity; i++) {
-            shuffleMint(msg.sender, totalAmountMinted + 1);
+            totalAmountMintedLocal++;
+            shuffleMint(msg.sender, totalAmountMintedLocal + 1);
         }
+        totalAmountMinted = totalAmountMintedLocal;
     }
     
     function presaleBuy(uint256 tokenQuantity) external payable {
         require(presaleLive, "PRESALE_CLOSED");
-        require(totalAmountMinted + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
-        require(privateAmountMinted + tokenQuantity <= OTTER_PRIVATE_MAX, "EXCEED_PRIVATE");
+        uint256 totalAmountMintedLocal = totalAmountMinted;
+        uint256 privateAmountMintedLocal = privateAmountMinted;
+        require(totalAmountMintedLocal + tokenQuantity <= OTTER_MAX, "OUT_OF_STOCK");
+        require(privateAmountMintedLocal + tokenQuantity <= OTTER_PRESALE_MAX, "EXCEED_PRIVATE");
         require(presalerListAlloc[msg.sender], "NOT_ELIGIBLE");
         require(OTTER_PRESALE_PRICE * tokenQuantity <= msg.value, "INSUFFICIENT_ETH");
         
         for (uint256 i = 0; i < tokenQuantity; i++) {
-            privateAmountMinted++;
-            shuffleMint(msg.sender, totalAmountMinted + 1);
+            privateAmountMintedLocal++;
+            totalAmountMintedLocal++;
+            shuffleMint(msg.sender, totalAmountMintedLocal + 1);
         }
+        privateAmountMinted = privateAmountMintedLocal;
+        totalAmountMinted = totalAmountMintedLocal;
     }
     
     // Free give away.    
@@ -181,17 +190,23 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
 
         giveAwayAmountMinted++;
         giveAwayListAlloc[msg.sender]--;
+        totalAmountMinted++;
         shuffleMint(msg.sender, totalAmountMinted + 1);
     }
 
     function airDrop(address[] calldata receivers) external onlyOwner {
         require(totalAmountMinted + receivers.length <= OTTER_MAX, "MAX_MINT");
+        uint256 airDropAmountLocal = airDropAmount;
+        uint256 totalAmountMintedLocal = totalAmountMinted;
         require(airDropAmount + receivers.length <= OTTER_AIR_DROP_MAX, "EXCEED_AIR_DROP");
         
         for (uint256 i = 0; i < receivers.length; i++) {
-            airDropAmount++;
-            shuffleMint(receivers[i], totalAmountMinted + 1);
+            airDropAmountLocal++;
+            totalAmountMintedLocal++;
+            shuffleMint(receivers[i], totalAmountMintedLocal + 1);
         }
+        airDropAmount = airDropAmountLocal;
+        totalAmountMinted = totalAmountMintedLocal;
     }
     
     function updateCompanion(uint256 tokenId, string calldata companionType) external payable {
@@ -241,7 +256,6 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
             saleLive = false;
             presaleLive = false;
             giveAwayLive = false;
-            mintingFinalized = true;
             mintingFinalRandRequestId = getRandomNumber();
         }
     }
@@ -250,18 +264,17 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
         require(!mintingFinalized, "Fair minting has already completed");
         uint256 target = rangedRandomNum(tokenId);
         _safeMint(to, tokenId);
-        totalAmountMinted++;
         // Swap target and tokenId image mapping.
         tokenIdToImageId[tokenId] = target;
         tokenIdToImageId[target] = tokenId;
-        if(totalAmountMinted == OTTER_MAX) {
+        if(tokenId == OTTER_MAX) {
             finalizeMinting();
         }
     }
 
     
     function withdraw() external onlyOwner {
-        payable(msg.sender).transfer(address(this).balance);
+        payable(gnosis_safe).transfer(address(this).balance);
     }
     
     function burn(uint256[] calldata tokenIds) external onlyOwner() {
@@ -349,6 +362,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
      */
     function fulfillRandomness(bytes32 requestId, uint256 randomness) internal override {
         if(mintingFinalRandRequestId == requestId) {
+            mintingFinalized = true;
             // All tokenId to imageId shifted by finalShifter, except Flippening Otter.
             finalShifter = randomness%OTTER_MAX;        
         } else {

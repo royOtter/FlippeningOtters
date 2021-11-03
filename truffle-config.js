@@ -23,9 +23,8 @@ module.exports = {
    rinkeby: {
      provider: new HDWalletProvider(process.env.MNEMONIC, "https://rinkeby.infura.io/v3/" + process.env.INFURA_KEY),
      network_id: 4
-   }
-  },
-  mainnet: {
+   },
+   mainnet: {
     provider: new HDWalletProvider(process.env.MNEMONIC, "https://mainnet.infura.io/v3/" + process.env.INFURA_KEY),
     network_id: 1
   }
