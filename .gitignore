@@ -1,5 +1,6 @@
 contracts/.placeholder
 test/.placeholder
+web3/node_modules
 build
 node_modules
 .env
