@@ -1,0 +1,95 @@
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #FCCBCA;
+  min-height: 100vh;
+  /* display: flex;
+  flex-direction: column; */
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: black;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes App-logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.button{
+    margin: 0;
+    height:60px;
+    width: 200px;
+    margin-top: 50px;
+    margin-left:50px;
+    /* padding: 20px 70px 20px 70px; */
+    font-family: 'AtlanticCruise',sans-serif;
+    font-size: 15px;
+    line-height: 20px;
+    letter-spacing: 2px;
+    text-align: center;
+    border: 3px none #787878;
+    -moz-border-radius: 999px;
+    -webkit-border-radius: 999px;
+    border-radius: 999px;
+    background-color: #f22d56;
+    color: #ffffff; 
+    font-style: normal; 
+    font-weight: bold; 
+    text-decoration: none;
+}
+
+body {
+  background-color: #FCCBCA;
+}
+
+#wallet{
+  float:right;
+  margin:50px;
+}
+
+.input{
+  height:40px;
+  margin:20px
+}
+
+#logo{
+  margin:50px;
+}
+
+.connection{
+  float:right;
+  margin:50px;
+  line-height: 20px;
+  letter-spacing: 2px;
+  width: 200px;
+  height:60px;
+  padding:20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 15px;
+  vertical-align: middle;
+  text-align: center;
+}
