@@ -47,7 +47,7 @@ contract FlippeningOtters is ERC721, Ownable, KeeperCompatibleInterface, VRFCons
     uint256 public constant OTTER_COMPANION_PRICE = 0.02 ether;
     uint256 public constant OTTER_PRESALE_PRICE = 0.01 ether;
     uint256 public OTTER_MINT_PRICE = 0.05 ether;
-    address public gnosis_safe = 0x1b0355329B7212FA98d420D0D1bD99acB13C4689;
+    address public gnosis_safe = 0xB836140717e545bCd59691aC1E4d50f1f94fb6b3;
     
     struct OtterAddOns { 
         string wing;
